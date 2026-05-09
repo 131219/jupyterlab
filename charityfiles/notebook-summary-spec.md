@@ -8,7 +8,7 @@ This spec defines how to turn that placeholder into a working notebook summariza
 
 1. Opens the summary panel when the user clicks **Notebook Summary**
 2. Starts a **background** summary job for the currently active notebook
-3. Uses **Google Gemini** server-side to generate a summary of the notebook contents
+3. Uses **Anthropic** server-side to generate a summary of the notebook contents
 4. Displays the summary in the panel
 5. Makes the summary easy to **select, copy, and paste**
 
@@ -24,7 +24,7 @@ This is a product and implementation spec only. It does **not** require code cha
   - errors / tracebacks
   - basic notebook metadata when helpful
 - Run summarization asynchronously so the UI stays responsive
-- Keep Gemini credentials and provider calls on the **server**, not in the browser
+- Keep Anthropic credentials and provider calls on the **server**, not in the browser
 - Make the resulting summary readable, refreshable, and copyable
 
 ## Non-Goals
@@ -33,7 +33,7 @@ This is a product and implementation spec only. It does **not** require code cha
 - Inline cell-by-cell annotations in v1
 - Editing notebook content from the summary panel
 - Long-term summary history across sessions in v1
-- Exposing Gemini API keys to the frontend
+- Exposing Anthropic API keys to the frontend
 
 ## Current State
 
@@ -77,18 +77,18 @@ This means the UI hook already exists, but there is currently:
 - If no notebook is active, show: **"Open a notebook to generate a summary."**
 - If a summary job is already running, disable duplicate submits and show current progress
 - If the notebook is too large, show a clear message and optionally fall back to chunked summarization
-- If Gemini fails, show an actionable error with **Retry**
+- If Anthropic fails, show an actionable error with **Retry**
 
-## Direct Gemini API Flow
+## Direct Anthropic API Flow
 
-The v1 implementation should call the **Gemini API directly from the JupyterLab backend**. The browser does not talk to Gemini itself, and this flow does not require an MCP server.
+The v1 implementation should call the **Anthropic API directly from the JupyterLab backend**. The browser does not talk to Anthropic itself, and this flow does not require an MCP server.
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant JL as JupyterLab Frontend
     participant JS as JupyterLab Backend
-    participant G as Gemini API
+    participant A as Anthropic API
     participant P as Summary Panel
 
     U->>JL: Click "Notebook Summary"
@@ -101,8 +101,8 @@ sequenceDiagram
         JL->>JS: GET /lab/api/notebook-summary/jobs/{job_id}
         alt Job not started yet
             JS->>JS: Validate payload and prepare prompt
-            JS->>G: Send notebook snapshot + prompt
-            G-->>JS: Return generated summary text
+            JS->>A: Send notebook snapshot + prompt
+            A-->>JS: Return generated summary text
             JS-->>JL: status = running
         else Job still running
             JS-->>JL: status = running
@@ -116,7 +116,7 @@ sequenceDiagram
     alt User copies summary
         U->>P: Click Copy
         P->>U: Copyable plain-text summary
-    else Gemini request fails
+    else Anthropic request fails
         JS-->>JL: status = failed + message
         JL->>P: Show error + Retry
     end
@@ -196,13 +196,13 @@ Recommended model:
 
 This is simpler and lower-risk than introducing a websocket-only path in v1.
 
-### 4. Gemini integration
+### 4. Anthropic integration
 
-Gemini must be called from the server layer only.
+Anthropic must be called from the server layer only.
 
 Server responsibilities:
 
-- read Gemini credentials from environment variables or Jupyter config
+- read Anthropic credentials from environment variables or Jupyter config
 - construct the LLM request
 - handle timeouts, provider errors, and rate limits
 - return normalized summary text to the frontend
@@ -277,7 +277,7 @@ Suggested state fields:
 - receive notebook snapshot payload
 - validate and normalize request size/content
 - create async summary job
-- call Gemini
+- call Anthropic
 - return final plain-text summary
 
 ### Likely backend touchpoints
@@ -363,13 +363,13 @@ Response on failure:
 {
   "job_id": "abc123",
   "status": "failed",
-  "message": "Gemini request timed out"
+  "message": "Anthropic request timed out"
 }
 ```
 
 ## Prompting Strategy
 
-The prompt should tell Gemini to summarize the notebook as an analysis artifact, not as a generic document.
+The prompt should tell Anthropic to summarize the notebook as an analysis artifact, not as a generic document.
 
 Recommended prompt requirements:
 
@@ -413,7 +413,7 @@ Because notebook contents may include sensitive data, this feature needs explici
 
 Required safeguards:
 
-- Gemini API credentials stored server-side only
+- Anthropic API credentials stored server-side only
 - authenticated JupyterLab API handler
 - no provider secrets in browser bundles
 - configurable opt-out / disable switch
@@ -421,7 +421,7 @@ Required safeguards:
 
 Recommended configuration:
 
-- environment variable or traitlets config for Gemini credentials
+- environment variable or traitlets config for Anthropic credentials
 - configurable request timeout
 - configurable max notebook payload size
 - configurable enable/disable flag for notebook summary feature
@@ -434,8 +434,8 @@ The UI should expose distinct, user-friendly failures:
 - notebook extraction failed
 - request rejected because notebook is too large
 - summary job timed out
-- Gemini credentials missing
-- Gemini rate-limited or unavailable
+- Anthropic credentials missing
+- Anthropic rate-limited or unavailable
 - server error
 
 Recommended UX:
@@ -470,7 +470,7 @@ Requirements:
 - authenticated job creation works
 - invalid payloads are rejected
 - oversized payloads are rejected or chunked per config
-- Gemini provider failures propagate as useful API errors
+- Anthropic provider failures propagate as useful API errors
 - completed jobs return plain-text summaries
 
 ### Integration / E2E tests
@@ -479,7 +479,7 @@ Requirements:
 - summary remains copyable
 - failed provider call shows retryable error
 
-For test reliability, Gemini should be mocked in automated tests.
+For test reliability, Anthropic should be mocked in automated tests.
 
 ## Recommended Implementation Breakdown
 
@@ -495,7 +495,7 @@ For test reliability, Gemini should be mocked in automated tests.
 - register new routes in `jupyterlab\labapp.py`
 - support async job creation and polling
 
-### Phase 3: Add Gemini provider integration
+### Phase 3: Add Anthropic provider integration
 
 - add server-side provider wrapper
 - add configuration and credential loading
@@ -518,11 +518,11 @@ For test reliability, Gemini should be mocked in automated tests.
 
 These should be resolved before implementation starts:
 
-1. Should v1 include image outputs through Gemini multimodal input, or treat image outputs as omitted / described metadata only?
+1. Should v1 include image outputs through Anthropic multimodal input, or treat image outputs as omitted / described metadata only?
 2. Should summaries auto-refresh when notebook content changes, or only on explicit user action?
 3. Should summaries be cached per notebook revision to reduce repeated provider calls?
 4. Should the summary be plain text only, or also optionally rendered as markdown while preserving a copyable raw-text view?
-5. What Gemini product path is intended: direct Gemini API, Vertex AI, or an internal proxy service?
+5. What Anthropic product path is intended: direct Anthropic API or an internal proxy service?
 
 ## Recommendation
 
@@ -531,7 +531,7 @@ For v1, the safest path is:
 - keep the existing panel entry point
 - use `INotebookTracker` to capture the active notebook
 - send a normalized notebook snapshot to a new authenticated JupyterLab backend API
-- call Gemini on the server
+- call Anthropic on the server
 - poll job status from the frontend
 - render the result as plain text with a dedicated **Copy** button
 
