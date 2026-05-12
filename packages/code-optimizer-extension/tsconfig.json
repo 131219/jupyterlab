@@ -34,19 +34,19 @@
       "path": "../apputils"
     },
     {
+      "path": "../cells"
+    },
+    {
       "path": "../code-optimizer"
     },
     {
       "path": "../notebook"
     },
     {
-      "path": "../ui-components"
-    },
-    {
-      "path": "../cells"
-    },
-    {
       "path": "../settingregistry"
+    },
+    {
+      "path": "../ui-components"
     }
   ],
   "extends": "../../tsconfigbase"
