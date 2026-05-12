@@ -346,7 +346,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
             });
 
             const ruleResult = await showDialog({
-              title: `Optimize All — ${changedR.length} Change(s)`,
+              title: `Optimize All (rule-based) — ${changedR.length} Change(s)`,
               body,
               buttons: [
                 Dialog.cancelButton({ label: 'Reject All' }),
@@ -366,6 +366,34 @@ const plugin: JupyterFrontEndPlugin<void> = {
       });
 
       notebookPanel.toolbar.addItem('optimize-all', optimizeAllButton);
+
+      // Inject per-cell ⚡ button into the floating cell toolbar
+      const injectCellButton = async (cell: any) => {
+        if (!cell || cell.model?.type !== 'code' || cell.isDisposed) return;
+        // Wait for cell to be ready, then give the cell toolbar time to attach
+        try { await cell.ready; } catch { return; }
+        await new Promise(r => setTimeout(r, 80));
+        if (cell.isDisposed || !cell.inputArea) return;
+
+        const widgets: any[] = (cell.inputArea.layout as any)?.widgets ?? [];
+        for (const w of widgets) {
+          if (w && typeof w.insertItem === 'function' && typeof w.names === 'function') {
+            const names: string[] = Array.from(w.names());
+            if (!names.includes('optimize-active-cell')) {
+              const btn = new ToolbarButton({
+                icon: offlineBoltIcon,
+                tooltip: 'Optimize this cell',
+                onClick: () => { void app.commands.execute('code-optimizer:optimize-active-cell'); }
+              });
+              w.insertItem(0, 'optimize-active-cell', btn);
+            }
+            return;
+          }
+        }
+      };
+
+      notebookPanel.content.activeCellChanged.connect((_, cell) => { void injectCellButton(cell); });
+      void injectCellButton(notebookPanel.content.activeCell);
     };
 
     tracker.widgetAdded.connect((_, panel) => addButtonsToPanel(panel));
