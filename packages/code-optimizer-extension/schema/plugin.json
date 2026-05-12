@@ -1,6 +1,15 @@
 {
   "title": "Code Optimizer",
   "description": "Settings for code optimizer",
+  "jupyter.lab.toolbars": {
+    "Cell": [
+      {
+        "name": "optimize-active-cell",
+        "command": "code-optimizer:optimize-active-cell",
+        "rank": 1
+      }
+    ]
+  },
   "type": "object",
   "properties": {
     "enableAutoOptimize": {
