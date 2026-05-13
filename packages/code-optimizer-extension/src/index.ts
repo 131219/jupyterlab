@@ -12,15 +12,13 @@ import type {
   JupyterFrontEnd,
   JupyterFrontEndPlugin
 } from '@jupyterlab/application';
-import {
-  INotebookTracker,
-  NotebookPanel
-} from '@jupyterlab/notebook';
+import type { NotebookPanel } from '@jupyterlab/notebook';
+import { INotebookTracker } from '@jupyterlab/notebook';
 import { ISettingRegistry } from '@jupyterlab/settingregistry';
-import { ToolbarButton, offlineBoltIcon } from '@jupyterlab/ui-components';
-import { showDialog, Dialog } from '@jupyterlab/apputils';
+import { offlineBoltIcon, ToolbarButton } from '@jupyterlab/ui-components';
+import { Dialog, showDialog } from '@jupyterlab/apputils';
 import { Widget } from '@lumino/widgets';
-import { RuleBasedOptimizer, LLMOptimizer } from '@jupyterlab/code-optimizer';
+import { LLMOptimizer, RuleBasedOptimizer } from '@jupyterlab/code-optimizer';
 
 function escapeHtml(text: string): string {
   const div = document.createElement('div');
@@ -41,13 +39,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
     let pluginSettings: ISettingRegistry.ISettings | null = null;
     settingRegistry
       .load('@jupyterlab/code-optimizer-extension:plugin')
-      .then(s => { pluginSettings = s; })
-      .catch(err => { console.error('Could not load code optimizer settings:', err); });
+      .then(s => {
+        pluginSettings = s;
+      })
+      .catch(err => {
+        console.error('Could not load code optimizer settings:', err);
+      });
 
     // Per-cell optimize command — shows in the cell toolbar via schema registration
     app.commands.addCommand('code-optimizer:optimize-active-cell', {
       icon: offlineBoltIcon,
       caption: 'Optimize this cell (Gemini if configured, else rule-based)',
+      describedBy: { args: {}, selector: '.jp-Cell' },
       execute: async () => {
         const cell = tracker.activeCell;
         if (!cell || cell.model.type !== 'code') return;
@@ -55,7 +58,8 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const originalCode = cell.model.sharedModel.getSource();
         if (!originalCode.trim()) return;
 
-        const apiKey = (pluginSettings?.get('llmApiKey').composite as string) ?? '';
+        const apiKey =
+          (pluginSettings?.get('llmApiKey').composite as string) ?? '';
 
         let optimizedCode = originalCode;
         let method = 'rule-based';
@@ -63,12 +67,18 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
         if (apiKey) {
           try {
+            const llmModel =
+              (pluginSettings?.get('llmModel').composite as string) ||
+              'gemini-flash-latest';
             const llm = new LLMOptimizer({
               apiKey,
               provider: 'google',
-              model: 'gemini-2.0-flash'
+              model: llmModel
             });
             const result = await llm.optimize(originalCode, 'python');
+            if (result.code.trim() === originalCode.trim()) {
+              throw new Error('LLM returned unchanged code');
+            }
             optimizedCode = result.code;
             method = 'Gemini';
           } catch {
@@ -88,23 +98,36 @@ const plugin: JupyterFrontEndPlugin<void> = {
         const body = new Widget();
         body.addClass('jp-OptimizerDialog');
         body.node.innerHTML = `
-          <h3 style="margin:0 0 6px">Original:</h3>
-          <pre style="background:#f5f5f5;padding:10px;border-radius:4px;white-space:pre-wrap;font-size:12px">${escapeHtml(originalCode)}</pre>
-          <h3 style="margin:8px 0 6px;color:#2e7d32">Optimized (${method}):</h3>
-          <pre style="background:#e8f5e9;padding:10px;border-radius:4px;white-space:pre-wrap;font-size:12px">${escapeHtml(optimizedCode)}</pre>
-          ${transformations.length > 0
-            ? `<ul style="font-size:12px;margin:4px 0 0">${transformations.map(t => `<li>${escapeHtml(t.description)}</li>`).join('')}</ul>`
-            : ''}
+          <div style="display:flex;gap:12px;min-height:0">
+            <div style="flex:1;min-width:0">
+              <h3 style="margin:0 0 6px">Original:</h3>
+              <pre style="background:#f5f5f5;padding:10px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:340px;overflow:auto">${escapeHtml(originalCode)}</pre>
+            </div>
+            <div style="flex:1;min-width:0">
+              <h3 style="margin:0 0 6px;color:#2e7d32">Optimized (${method}):</h3>
+              <pre style="background:#e8f5e9;padding:10px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:340px;overflow:auto">${escapeHtml(optimizedCode)}</pre>
+            </div>
+          </div>
+          ${
+            transformations.length > 0
+              ? `<ul style="font-size:12px;margin:8px 0 0">${transformations.map(t => `<li>${escapeHtml(t.description)}</li>`).join('')}</ul>`
+              : ''
+          }
         `;
 
-        const buttons = optimizedCode === originalCode
-          ? [Dialog.okButton({ label: 'Close' })]
-          : [Dialog.cancelButton({ label: 'Reject' }), Dialog.okButton({ label: 'Accept' })];
+        const buttons =
+          optimizedCode === originalCode
+            ? [Dialog.okButton({ label: 'Close' })]
+            : [
+                Dialog.cancelButton({ label: 'Reject' }),
+                Dialog.okButton({ label: 'Accept' })
+              ];
 
         const result = await showDialog({
-          title: optimizedCode === originalCode
-            ? `No Changes (${method})`
-            : `Review Optimization (${method})`,
+          title:
+            optimizedCode === originalCode
+              ? `No Changes (${method})`
+              : `Review Optimization (${method})`,
           body,
           buttons
         });
@@ -123,51 +146,40 @@ const plugin: JupyterFrontEndPlugin<void> = {
         tooltip: 'Optimize all cells (Gemini if configured, else rule-based)',
         onClick: async () => {
           const notebook = notebookPanel.content;
-          const apiKey = (pluginSettings?.get('llmApiKey').composite as string) ?? '';
+          const apiKey =
+            (pluginSettings?.get('llmApiKey').composite as string) ?? '';
 
           const codeCells: Array<{ index: number; code: string }> = [];
           notebook.widgets.forEach((cell, index) => {
-            if (cell.model.type === 'code' && cell.model.sharedModel.getSource().trim()) {
-              codeCells.push({ index, code: cell.model.sharedModel.getSource() });
+            if (
+              cell.model.type === 'code' &&
+              cell.model.sharedModel.getSource().trim()
+            ) {
+              codeCells.push({
+                index,
+                code: cell.model.sharedModel.getSource()
+              });
             }
           });
 
           if (codeCells.length === 0) {
             const b = new Widget();
             b.node.textContent = 'No non-empty code cells found.';
-            showDialog({ title: 'Nothing to Optimize', body: b, buttons: [Dialog.okButton()] });
+            showDialog({
+              title: 'Nothing to Optimize',
+              body: b,
+              buttons: [Dialog.okButton()]
+            });
             return;
           }
 
           if (apiKey) {
-            // ── Gemini path ──────────────────────────────────────────────────
-            const loadingBody = new Widget();
-            loadingBody.node.innerHTML = `
-              <p style="margin:8px 0">Sending <strong>${codeCells.length}</strong> cell(s) to Gemini…</p>
-              <p style="color:#666;font-size:13px">This may take a few seconds.</p>
-            `;
+            // ── Gemini path — live queue: dialog opens immediately, cells stream in ──
+            const llmModel =
+              (pluginSettings?.get('llmModel').composite as string) ||
+              'gemini-flash-latest';
 
-            let resolveLoading!: (v: boolean) => void;
-            const loadingDone = new Promise<boolean>(res => { resolveLoading = res; });
-            let cancelled = false;
-
-            const loadingDialogPromise = showDialog({
-              title: `Optimizing ${codeCells.length} cell(s) with Gemini…`,
-              body: loadingBody,
-              buttons: [Dialog.cancelButton({ label: 'Cancel' })]
-            });
-            loadingDialogPromise.then(r => {
-              if (!r.button.accept) cancelled = true;
-              resolveLoading(true);
-            });
-
-            const llm = new LLMOptimizer({
-              apiKey,
-              provider: 'google',
-              model: 'gemini-2.0-flash'
-            });
-
-            interface GResult {
+            interface IGResult {
               index: number;
               originalCode: string;
               optimizedCode: string;
@@ -175,106 +187,208 @@ const plugin: JupyterFrontEndPlugin<void> = {
               error?: string;
             }
 
-            const geminiResults: GResult[] = await Promise.all(
-              codeCells.map(async ({ index, code }) => {
-                try {
-                  const r = await llm.optimize(code, 'python');
-                  return {
-                    index,
-                    originalCode: code,
-                    optimizedCode: r.code,
-                    changed: r.code.trim() !== code.trim()
-                  };
-                } catch (err: any) {
-                  return {
-                    index,
-                    originalCode: code,
-                    optimizedCode: code,
-                    changed: false,
-                    error: String(err?.message ?? err)
-                  };
-                }
-              })
-            );
-
-            resolveLoading(true);
-            await loadingDone;
-            if (cancelled) return;
-
-            const changedG = geminiResults.filter(r => r.changed);
-            const errors = geminiResults.filter(r => r.error);
-
-            if (changedG.length === 0) {
-              const b = new Widget();
-              b.node.innerHTML = `
-                <p>Gemini found no changes in <strong>${geminiResults.length}</strong> cell(s).</p>
-                ${errors.length > 0
-                  ? `<p style="color:#c00"><strong>${errors.length}</strong> failed: ${escapeHtml(errors[0].error ?? '')}</p>`
-                  : ''}
-              `;
-              showDialog({ title: 'Gemini — No Changes', body: b, buttons: [Dialog.okButton({ label: 'Close' })] });
-              return;
-            }
-
+            // Build the dialog body up-front with a placeholder row per cell
             const reviewBody = new Widget();
             reviewBody.addClass('jp-OptimizerDialog');
+            reviewBody.node.style.minWidth = '560px';
 
-            const summary = document.createElement('p');
-            summary.innerHTML =
-              `<strong>${changedG.length}</strong> of <strong>${geminiResults.length}</strong> cell(s) optimized by Gemini.` +
-              (errors.length > 0 ? ` <span style="color:#c00">(${errors.length} failed)</span>` : '') +
-              ' Select which to apply:';
-            reviewBody.node.appendChild(summary);
+            const statusLine = document.createElement('p');
+            statusLine.style.cssText =
+              'margin:0 0 8px;font-size:13px;color:#555';
+            statusLine.textContent = `Sending ${codeCells.length} cell(s) to Gemini…`;
+            reviewBody.node.appendChild(statusLine);
 
+            // One section per cell — starts as a spinner, filled in when result arrives
+            const cellSections: HTMLDivElement[] = [];
             const checkboxes: Array<{
               checkbox: HTMLInputElement;
               cellIndex: number;
               optimizedCode: string;
             }> = [];
 
-            changedG.forEach(r => {
+            codeCells.forEach(({ index }) => {
               const section = document.createElement('div');
               section.style.cssText =
-                'margin-top:16px;border-top:1px solid #ccc;padding-top:10px';
-
-              const label = document.createElement('label');
-              label.style.cssText =
-                'display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:bold';
-
-              const checkbox = document.createElement('input');
-              checkbox.type = 'checkbox';
-              checkbox.checked = true;
-              checkboxes.push({
-                checkbox,
-                cellIndex: r.index,
-                optimizedCode: r.optimizedCode
-              });
-
-              label.append(checkbox, document.createTextNode(`Cell ${r.index + 1}`));
-
-              const diff = document.createElement('div');
-              diff.style.marginTop = '8px';
-              diff.innerHTML = `
-                <h5 style="margin:0 0 4px;color:#555">Original:</h5>
-                <pre style="background:#f5f5f5;padding:8px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:120px;overflow:auto">${escapeHtml(r.originalCode)}</pre>
-                <h5 style="margin:6px 0 4px;color:#2e7d32">Optimized:</h5>
-                <pre style="background:#e8f5e9;padding:8px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:120px;overflow:auto">${escapeHtml(r.optimizedCode)}</pre>
+                'margin-top:12px;border-top:1px solid #e0e0e0;padding-top:10px';
+              section.innerHTML = `
+                <div style="display:flex;align-items:center;gap:8px;font-weight:bold;margin-bottom:6px">
+                  <span>Cell ${index + 1}</span>
+                  <span class="cell-status" style="font-weight:normal;color:#888;font-size:12px">⏳ waiting…</span>
+                </div>
+                <div class="cell-diff" style="color:#aaa;font-size:12px;padding:4px 0">Optimizing…</div>
               `;
-
-              section.append(label, diff);
+              cellSections.push(section);
               reviewBody.node.appendChild(section);
             });
 
-            const reviewResult = await showDialog({
-              title: `Gemini — ${changedG.length} Change(s) Ready`,
+            // Show the dialog immediately — Apply Selected starts disabled
+            let resolveDialog!: (v: Dialog.IResult<unknown>) => void;
+            const dialogDone = new Promise<Dialog.IResult<unknown>>(res => {
+              resolveDialog = res;
+            });
+
+            const dialogPromise = showDialog({
+              title: `Gemini — Optimizing ${codeCells.length} cell(s)`,
               body: reviewBody,
               buttons: [
                 Dialog.cancelButton({ label: 'Cancel' }),
                 Dialog.okButton({ label: 'Apply Selected' })
               ]
             });
+            dialogPromise.then(r => resolveDialog(r));
 
-            if (reviewResult.button.accept) {
+            // Disable Apply Selected until all results are in
+            // (find the ok button and disable it)
+            requestAnimationFrame(() => {
+              const okBtn = document.querySelector(
+                '.jp-Dialog-button.jp-mod-accept'
+              ) as HTMLButtonElement | null;
+              if (okBtn) okBtn.disabled = true;
+            });
+
+            let cancelled = false;
+            let doneCount = 0;
+            const geminiResults: IGResult[] = [];
+
+            // Fire all cell requests in parallel
+            const cellPromises = codeCells.map(async ({ index, code }, i) => {
+              try {
+                const controller = new AbortController();
+                const tid = setTimeout(() => controller.abort(), 30000);
+                let resp: Response;
+                try {
+                  const prompt = `You are a code optimization expert. Optimize the following Python code.
+Optimization goals:
+- Optimize for readability and maintainability
+- Use Pythonic idioms (list comprehensions, built-ins, zip/enumerate)
+- Remove unnecessary code and variables
+Important: Preserve the original functionality. Return ONLY the optimized code, no explanations or markdown.
+
+\`\`\`python
+${code}
+\`\`\``;
+                  resp = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${llmModel}:generateContent?key=${apiKey}`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                      }),
+                      signal: controller.signal
+                    }
+                  );
+                } finally {
+                  clearTimeout(tid);
+                }
+                if (!resp.ok)
+                  throw new Error(`${resp.status} ${resp.statusText}`);
+                const data = await resp.json();
+                let optimized: string =
+                  data.candidates[0].content.parts[0].text;
+                // Strip markdown fences if present
+                optimized = optimized
+                  .replace(/```[\w]*\n?([\s\S]*?)```/g, '$1')
+                  .trim();
+                const changed =
+                  optimized !== '' && optimized.trim() !== code.trim();
+
+                geminiResults.push({
+                  index,
+                  originalCode: code,
+                  optimizedCode: changed ? optimized : code,
+                  changed
+                });
+
+                // Update this cell's section in the dialog
+                const section = cellSections[i];
+                const statusEl = section.querySelector(
+                  '.cell-status'
+                ) as HTMLElement;
+                const diffEl = section.querySelector(
+                  '.cell-diff'
+                ) as HTMLElement;
+
+                if (changed) {
+                  statusEl.textContent = '✓ optimized';
+                  statusEl.style.color = '#2e7d32';
+
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.checked = true;
+                  checkboxes.push({
+                    checkbox,
+                    cellIndex: index,
+                    optimizedCode: optimized
+                  });
+
+                  const label = section.querySelector('div') as HTMLElement;
+                  label.insertBefore(checkbox, label.firstChild);
+
+                  diffEl.innerHTML = `
+                    <div style="display:flex;gap:8px">
+                      <div style="flex:1;min-width:0">
+                        <h5 style="margin:0 0 4px;color:#555">Original:</h5>
+                        <pre style="background:#f5f5f5;padding:8px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:150px;overflow:auto">${escapeHtml(code)}</pre>
+                      </div>
+                      <div style="flex:1;min-width:0">
+                        <h5 style="margin:0 0 4px;color:#2e7d32">Optimized:</h5>
+                        <pre style="background:#e8f5e9;padding:8px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:150px;overflow:auto">${escapeHtml(optimized)}</pre>
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  statusEl.textContent = '— no changes';
+                  statusEl.style.color = '#aaa';
+                  diffEl.textContent = '';
+                }
+              } catch (err: any) {
+                geminiResults.push({
+                  index,
+                  originalCode: code,
+                  optimizedCode: code,
+                  changed: false,
+                  error: String(err?.message ?? err)
+                });
+                const section = cellSections[i];
+                const statusEl = section.querySelector(
+                  '.cell-status'
+                ) as HTMLElement;
+                const diffEl = section.querySelector(
+                  '.cell-diff'
+                ) as HTMLElement;
+                statusEl.textContent = '✗ failed';
+                statusEl.style.color = '#c00';
+                diffEl.textContent = '';
+              }
+
+              doneCount++;
+              statusLine.textContent =
+                doneCount < codeCells.length
+                  ? `${doneCount} of ${codeCells.length} done, waiting for remaining…`
+                  : `All ${codeCells.length} cell(s) processed.`;
+
+              if (doneCount === codeCells.length) {
+                // Re-enable Apply Selected and update title
+                const okBtn = document.querySelector(
+                  '.jp-Dialog-button.jp-mod-accept'
+                ) as HTMLButtonElement | null;
+                if (okBtn) okBtn.disabled = false;
+                const titleEl = document.querySelector(
+                  '.jp-Dialog-header'
+                ) as HTMLElement | null;
+                const changed = geminiResults.filter(r => r.changed).length;
+                if (titleEl)
+                  titleEl.textContent = `Gemini — ${changed} Change(s) Ready`;
+              }
+            });
+
+            // Wait for all parallel calls AND for the user to interact with the dialog
+            await Promise.all(cellPromises);
+            const dialogResult = await dialogDone;
+            cancelled = !dialogResult.button.accept;
+
+            if (!cancelled) {
               checkboxes.forEach(({ checkbox, cellIndex, optimizedCode }) => {
                 if (checkbox.checked) {
                   notebook.widgets[cellIndex].model.sharedModel.setSource(
@@ -287,14 +401,14 @@ const plugin: JupyterFrontEndPlugin<void> = {
             // ── Rule-based path ───────────────────────────────────────────────
             const ruleOptimizer = new RuleBasedOptimizer();
 
-            interface RResult {
+            interface IRResult {
               index: number;
               originalCode: string;
               optimizedCode: string;
               transformations: any[];
               changed: boolean;
             }
-            const results: RResult[] = [];
+            const results: IRResult[] = [];
 
             notebook.widgets.forEach((cell, index) => {
               if (cell.model.type === 'code') {
@@ -333,14 +447,22 @@ const plugin: JupyterFrontEndPlugin<void> = {
               section.style.cssText =
                 'margin-top:16px;border-top:1px solid #ccc;padding-top:8px';
               section.innerHTML = `
-                <h4 style="margin:0 0 6px">Cell ${r.index + 1}</h4>
-                <h5 style="margin:0 0 4px">Original:</h5>
-                <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;white-space:pre-wrap">${escapeHtml(r.originalCode)}</pre>
-                <h5 style="margin:4px 0">Optimized:</h5>
-                <pre style="background:#e8f5e9;padding:8px;border-radius:4px;font-size:12px;white-space:pre-wrap">${escapeHtml(r.optimizedCode)}</pre>
-                ${r.transformations.length > 0
-                  ? `<ul style="font-size:12px;margin:4px 0 0">${r.transformations.map(t => `<li>${escapeHtml(t.description)}</li>`).join('')}</ul>`
-                  : ''}
+                <h4 style="margin:0 0 8px">Cell ${r.index + 1}</h4>
+                <div style="display:flex;gap:8px">
+                  <div style="flex:1;min-width:0">
+                    <h5 style="margin:0 0 4px">Original:</h5>
+                    <pre style="background:#f5f5f5;padding:8px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:150px;overflow:auto">${escapeHtml(r.originalCode)}</pre>
+                  </div>
+                  <div style="flex:1;min-width:0">
+                    <h5 style="margin:0 0 4px;color:#2e7d32">Optimized:</h5>
+                    <pre style="background:#e8f5e9;padding:8px;border-radius:4px;font-size:12px;white-space:pre-wrap;max-height:150px;overflow:auto">${escapeHtml(r.optimizedCode)}</pre>
+                  </div>
+                </div>
+                ${
+                  r.transformations.length > 0
+                    ? `<ul style="font-size:12px;margin:6px 0 0">${r.transformations.map(t => `<li>${escapeHtml(t.description)}</li>`).join('')}</ul>`
+                    : ''
+                }
               `;
               body.node.appendChild(section);
             });
@@ -371,19 +493,31 @@ const plugin: JupyterFrontEndPlugin<void> = {
       const injectCellButton = async (cell: any) => {
         if (!cell || cell.model?.type !== 'code' || cell.isDisposed) return;
         // Wait for cell to be ready, then give the cell toolbar time to attach
-        try { await cell.ready; } catch { return; }
+        try {
+          await cell.ready;
+        } catch {
+          return;
+        }
         await new Promise(r => setTimeout(r, 80));
         if (cell.isDisposed || !cell.inputArea) return;
 
         const widgets: any[] = (cell.inputArea.layout as any)?.widgets ?? [];
         for (const w of widgets) {
-          if (w && typeof w.insertItem === 'function' && typeof w.names === 'function') {
+          if (
+            w &&
+            typeof w.insertItem === 'function' &&
+            typeof w.names === 'function'
+          ) {
             const names: string[] = Array.from(w.names());
             if (!names.includes('optimize-active-cell')) {
               const btn = new ToolbarButton({
                 icon: offlineBoltIcon,
                 tooltip: 'Optimize this cell',
-                onClick: () => { void app.commands.execute('code-optimizer:optimize-active-cell'); }
+                onClick: () => {
+                  void app.commands.execute(
+                    'code-optimizer:optimize-active-cell'
+                  );
+                }
               });
               w.insertItem(0, 'optimize-active-cell', btn);
             }
@@ -392,7 +526,9 @@ const plugin: JupyterFrontEndPlugin<void> = {
         }
       };
 
-      notebookPanel.content.activeCellChanged.connect((_, cell) => { void injectCellButton(cell); });
+      notebookPanel.content.activeCellChanged.connect((_, cell) => {
+        void injectCellButton(cell);
+      });
       void injectCellButton(notebookPanel.content.activeCell);
     };
 
