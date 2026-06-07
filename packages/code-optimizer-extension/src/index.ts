@@ -25,122 +25,6 @@ function escapeHtml(text: string): string {
   div.textContent = text;
   return div.innerHTML;
 }
-interface INotebookCellForSummary {
-  text: string;
-  type: 'markdown' | 'code';
-}
-
-interface ISummaryResult {
-  summary: string;
-  cellCount: number;
-}
-
-const MAX_CELL_CONTRIBUTION = 200;
-const MAX_SUMMARY_LENGTH = 2000;
-
-function summarizeNotebook(cells: INotebookCellForSummary[]): ISummaryResult {
-  const activeCells = cells.filter(cell => cell.text.trim().length > 0);
-
-  if (activeCells.length === 0) {
-    return { summary: 'No content to summarize.', cellCount: 0 };
-  }
-
-  const parts: string[] = [];
-
-  for (const cell of activeCells) {
-    const contribution =
-      cell.type === 'markdown'
-        ? _summarizeMarkdownCell(cell.text)
-        : _summarizeCodeCell(cell.text);
-
-    if (contribution) {
-      parts.push(contribution);
-    }
-  }
-
-  let summary = parts.join('\n');
-
-  if (cells.length >= 50 && summary.length > MAX_SUMMARY_LENGTH) {
-    summary = summary.slice(0, MAX_SUMMARY_LENGTH);
-  }
-
-  return {
-    summary,
-    cellCount: cells.length
-  };
-}
-
-function _summarizeMarkdownCell(text: string): string | null {
-  const lines = text.split('\n');
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      continue;
-    }
-
-    if (/^#{1,6}\s/.test(trimmed)) {
-      return trimmed;
-    }
-
-    return trimmed.slice(0, MAX_CELL_CONTRIBUTION);
-  }
-
-  return null;
-}
-
-function _summarizeCodeCell(text: string): string | null {
-  const lines = text.split('\n');
-
-  const commentLines = lines.filter(line => line.trim().startsWith('#'));
-
-  if (commentLines.length > 0) {
-    const comment = commentLines[0].trim().slice(0, MAX_CELL_CONTRIBUTION);
-
-    return `Code: ${comment}`;
-  }
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (trimmed) {
-      return `Code: ${trimmed.slice(0, MAX_CELL_CONTRIBUTION)}`;
-    }
-  }
-
-  return null;
-}
-
-function showNotebookSummaryPanel(
-  app: JupyterFrontEnd,
-  summary: string,
-  cellCount: number
-): void {
-  const panel = new Widget();
-  panel.id = 'jp-notebook-summary-output-panel';
-  panel.title.label = 'Notebook Summary';
-  panel.title.closable = true;
-
-  panel.node.innerHTML = `
-    <div style="padding:16px; max-width:900px;">
-      <h2 style="margin-top:0;">Notebook Summary</h2>
-      <p><strong>Cells summarized:</strong> ${cellCount}</p>
-      <pre style="
-        white-space:pre-wrap;
-        background:#f5f5f5;
-        padding:12px;
-        border-radius:6px;
-        font-size:13px;
-        line-height:1.5;
-        overflow:auto;
-      ">${escapeHtml(summary)}</pre>
-    </div>
-  `;
-
-  app.shell.add(panel, 'main');
-  app.shell.activateById(panel.id);
-}
 
 const plugin: JupyterFrontEndPlugin<void> = {
   id: '@jupyterlab/code-optimizer-extension:plugin',
@@ -459,12 +343,22 @@ ${code}
                   diffEl.textContent = '';
                 }
               } catch (err: any) {
+                // Gemini failed (rate limit, network, etc.) — fall back to rule-based
+                let fallbackCode = code;
+                let fallbackChanged = false;
+                try {
+                  const ruleOptimizer = new RuleBasedOptimizer();
+                  const ruleResult = await ruleOptimizer.optimize(code, 'python');
+                  fallbackCode = ruleResult.code;
+                  fallbackChanged = ruleResult.code.trim() !== code.trim();
+                } catch {
+                  // rule-based also failed, keep original
+                }
                 geminiResults.push({
                   index,
                   originalCode: code,
-                  optimizedCode: code,
-                  changed: false,
-                  error: String(err?.message ?? err)
+                  optimizedCode: fallbackChanged ? fallbackCode : code,
+                  changed: fallbackChanged
                 });
                 const section = cellSections[i];
                 const statusEl = section.querySelector(
@@ -473,9 +367,36 @@ ${code}
                 const diffEl = section.querySelector(
                   '.cell-diff'
                 ) as HTMLElement;
-                statusEl.textContent = '✗ failed';
-                statusEl.style.color = '#c00';
-                diffEl.textContent = '';
+                if (fallbackChanged) {
+                  statusEl.textContent = '✓ rule-based (Gemini unavailable)';
+                  statusEl.style.color = '#b8860b';
+                  const checkbox = document.createElement('input');
+                  checkbox.type = 'checkbox';
+                  checkbox.checked = true;
+                  checkboxes.push({
+                    checkbox,
+                    cellIndex: index,
+                    optimizedCode: fallbackCode
+                  });
+                  const label = section.querySelector('div') as HTMLElement;
+                  label.insertBefore(checkbox, label.firstChild);
+                  diffEl.innerHTML = `
+                    <div style="display:flex;gap:8px">
+                      <div style="flex:1;min-width:0">
+                        <h5 style="margin:0 0 4px;color:#555">Original:</h5>
+                        <pre style="background:#f5f5f5;padding:8px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:150px;overflow:auto">${escapeHtml(code)}</pre>
+                      </div>
+                      <div style="flex:1;min-width:0">
+                        <h5 style="margin:0 0 4px;color:#b8860b">Rule-based:</h5>
+                        <pre style="background:#fffde7;padding:8px;border-radius:4px;white-space:pre-wrap;font-size:12px;max-height:150px;overflow:auto">${escapeHtml(fallbackCode)}</pre>
+                      </div>
+                    </div>
+                  `;
+                } else {
+                  statusEl.textContent = '— no changes (Gemini unavailable)';
+                  statusEl.style.color = '#aaa';
+                  diffEl.textContent = '';
+                }
               }
 
               doneCount++;
