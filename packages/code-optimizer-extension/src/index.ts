@@ -19,7 +19,6 @@ import { offlineBoltIcon, ToolbarButton } from '@jupyterlab/ui-components';
 import { Dialog, showDialog } from '@jupyterlab/apputils';
 import { Widget } from '@lumino/widgets';
 import { LLMOptimizer, RuleBasedOptimizer } from '@jupyterlab/code-optimizer';
-//import { summarizeNotebook, NotebookCell } from '../../summarizer/src/summarizer';
 
 function escapeHtml(text: string): string {
   const div = document.createElement('div');
@@ -163,35 +162,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
         console.error('Could not load code optimizer settings:', err);
       });
 
-    app.commands.addCommand('code-optimizer:summarize-notebook', {
-      caption: 'Summarize the current notebook',
-      describedBy: { args: {} } as any,
-      execute: async () => {
-        const notebookPanel = tracker.currentWidget;
-
-        if (!notebookPanel) {
-          showNotebookSummaryPanel(app, 'No active notebook found.', 0);
-          return;
-        }
-
-        // const cells: NotebookCell[] = [];
-        const cells: INotebookCellForSummary[] = [];
-
-        notebookPanel.content.widgets.forEach(cell => {
-          const text = cell.model.sharedModel.getSource();
-          const type = cell.model.type === 'markdown' ? 'markdown' : 'code';
-
-          cells.push({
-            text,
-            type
-          });
-        });
-
-        const result = summarizeNotebook(cells);
-        showNotebookSummaryPanel(app, result.summary, result.cellCount);
-      }
-    });
-
     // Per-cell optimize command — shows in the cell toolbar via schema registration
     app.commands.addCommand('code-optimizer:optimize-active-cell', {
       icon: offlineBoltIcon,
@@ -285,19 +255,6 @@ const plugin: JupyterFrontEndPlugin<void> = {
     });
 
     const addButtonsToPanel = (notebookPanel: NotebookPanel) => {
-      const summarizeButton = new ToolbarButton({
-        label: 'Summarize',
-        tooltip: 'Summarize this notebook',
-        onClick: () => {
-          void app.commands.execute('code-optimizer:summarize-notebook');
-        }
-      });
-
-      notebookPanel.toolbar.insertItem(
-        11,
-        'summarizeNotebook',
-        summarizeButton
-      );
       // "Optimize All" — Gemini first if API key set, rule-based fallback
       const optimizeAllButton = new ToolbarButton({
         icon: offlineBoltIcon,

@@ -5,185 +5,95 @@
 **[Team](#team)** |
 **[Getting help](#getting-help)** |
 
-# [JupyterLab](https://jupyterlab.readthedocs.io)
+# JupyterLab — Team Finding Nemo (CSS566, Spring 2026)
 
-[![PyPI version](https://badge.fury.io/py/jupyterlab.svg)](https://badge.fury.io/py/jupyterlab)
-[![PyPI Downloads](https://static.pepy.tech/personalized-badge/jupyterlab?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=GRAY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/jupyterlab)
-[![Build Status](https://github.com/jupyterlab/jupyterlab/workflows/Linux%20Tests/badge.svg)](https://github.com/jupyterlab/jupyterlab/actions?query=branch%3Amain+workflow%3A%22Linux+Tests%22)
-[![Build Status](https://github.com/jupyterlab/jupyterlab/workflows/Windows%20Tests/badge.svg)](https://github.com/jupyterlab/jupyterlab/actions?query=branch%3Amain+workflow%3A%22Windows+Tests%22)
-[![Documentation Status](https://readthedocs.org/projects/jupyterlab/badge/?version=stable)](http://jupyterlab.readthedocs.io/en/stable/)
-[![Crowdin](https://badges.crowdin.net/jupyterlab/localized.svg)](https://crowdin.com/project/jupyterlab)
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8675/badge)](https://www.bestpractices.dev/projects/8675)
-[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jupyterlab/jupyterlab/badge)](https://scorecard.dev/viewer/?uri=github.com/jupyterlab/jupyterlab)
-[![GitHub](https://img.shields.io/badge/issue_tracking-github-blue.svg)](https://github.com/jupyterlab/jupyterlab/issues)
-[![Discourse](https://img.shields.io/badge/help_forum-discourse-blue.svg)](https://discourse.jupyter.org/c/jupyterlab)
-[![Zulip](https://img.shields.io/badge/social_chat-zulip-blue.svg)](https://jupyter.zulipchat.com/#narrow/channel/469762-jupyterlab)
+> **CSS566 Group Software Management Project — University of Washington, Spring 2026**
+> Team: Rana Abudaya, Stone Lei Cao, Jaden Dang, Prateek Singh, Charity Snellgrove
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jupyterlab/jupyterlab-demo/HEAD?urlpath=lab/tree/demo)
+This is Team Finding Nemo's fork of [JupyterLab](https://github.com/jupyterlab/jupyterlab). The team built two AI-powered extensions on top of JupyterLab 4.6:
 
-An extensible environment for interactive and reproducible computing, based on the
-Jupyter Notebook and Architecture.
+1. **Code Optimizer** — cleans up notebook code using a three-tier system: instant rule-based transformations (always available, no API key needed), LSP-based semantic refactoring (file mode), and LLM-powered rewriting via Google Gemini with automatic fallback between all tiers
+2. **Notebook Summary** — generates a structured plain-text summary of any open notebook so teammates can understand its contents at a glance without reading every cell
 
-[JupyterLab](http://jupyterlab.readthedocs.io/en/stable/) is the next-generation user interface for [Project Jupyter](https://jupyter.org) offering
-all the familiar building blocks of the classic Jupyter Notebook (notebook,
-terminal, text editor, file browser, rich outputs, etc.) in a flexible and
-powerful user interface.
-
-JupyterLab can be extended using [npm](https://www.npmjs.com/) packages
-that use our public APIs. The _prebuilt_ extensions can be distributed
-via [PyPI](https://pypi.org/search/?q=jupyterlab&o=-created&c=Framework+%3A%3A+Jupyter),
-conda, and other package managers. The _source_ extensions can be installed
-directly from npm (search for [jupyterlab-extension](https://www.npmjs.com/search?q=keywords:jupyterlab-extension)) but require an additional build step.
-You can also find JupyterLab extensions exploring GitHub topic [jupyterlab-extension](https://github.com/topics/jupyterlab-extension).
-To learn more about extensions, see the [user documentation](https://jupyterlab.readthedocs.io/en/latest/user/extensions.html).
-
-Read the current JupyterLab documentation on [ReadTheDocs](http://jupyterlab.readthedocs.io/en/stable/).
-
-> [!IMPORTANT]
-> JupyterLab 3 reached its end of maintenance date on May 15, 2024. Fixes for critical issues were backported until December 31, 2024. If you are still running JupyterLab 3, we strongly encourage you to **upgrade to JupyterLab 4 as soon as possible.** For more information, see [JupyterLab 3 end of maintenance](https://blog.jupyter.org/jupyterlab-3-end-of-maintenance-879778927db2) on the Jupyter Blog.
+Both features live entirely inside JupyterLab. Nothing is modified without explicit user approval at every step.
 
 ---
 
-## Getting started
-
-### Installation
-
-If you use [conda](https://docs.conda.io/en/latest/), [mamba](https://mamba.readthedocs.io/en/latest/), or [pip](https://docs.python.org/3/installing/index.html), you can install JupyterLab with one of the following commands.
-
-- If you use conda:
-  ```shell
-  conda install -c conda-forge jupyterlab
-  ```
-- If you use mamba:
-  ```shell
-  mamba install -c conda-forge jupyterlab
-  ```
-- If you use pip:
-  ```shell
-  pip install jupyterlab
-  ```
-  If installing using `pip install --user`, you must add the user-level `bin` directory to your `PATH` environment variable in order to launch `jupyter lab`. If you are using a Unix derivative (e.g., FreeBSD, GNU/Linux, macOS), you can do this by running `export PATH="$HOME/.local/bin:$PATH"`.
-
-For more detailed instructions, consult the [installation guide](http://jupyterlab.readthedocs.io/en/latest/getting_started/installation.html). Project installation instructions from the git sources are available in the [contributor documentation](CONTRIBUTING.md).
-
-#### Installing with Previous Versions of Jupyter Notebook
-
-When using a version of Jupyter Notebook earlier than 5.3, the following command must be run after installing JupyterLab to enable the JupyterLab server extension:
+## Quick Start
 
 ```bash
-jupyter serverextension enable --py jupyterlab --sys-prefix
+bash scripts/start-dev.sh
 ```
 
-### Running
+Opens JupyterLab at **http://127.0.0.1:8888/lab** with both extensions loaded in dev mode.
 
-Start up JupyterLab using:
-
-```bash
-jupyter lab
-```
-
-JupyterLab will open automatically in the browser. See the [documentation](http://jupyterlab.readthedocs.io/en/latest/getting_started/starting.html) for additional details.
-
-If you encounter an error like "Command 'jupyter' not found", please make sure `PATH` environment variable is set correctly. Alternatively, you can start up JupyterLab using `~/.local/bin/jupyter lab` without changing the `PATH` environment variable.
-
-### Prerequisites and Supported Browsers
-
-The latest versions of the following browsers are currently _known to work_:
-
-- Firefox
-- Chrome
-- Safari
-
-See our [documentation](http://jupyterlab.readthedocs.io/en/latest/getting_started/installation.html) for additional details.
+**Requirements:** Node.js 20+ (install via nvm) and a Python virtualenv at `jl-env/`.
+Full setup guide: [`packages/code-optimizer-extension/README.md`](packages/code-optimizer-extension/README.md)
 
 ---
 
-## Getting help
+## Features
 
-We encourage you to ask questions on the [Discourse forum](https://discourse.jupyter.org/c/jupyterlab). A question answered there can become a useful resource for others.
+### Code Optimizer
 
-### Bug report
+| Button | Location | What it does |
+|--------|----------|-------------|
+| ⚡ (lightning bolt) | Each code cell's toolbar | Optimize that one cell — shows a side-by-side diff, Accept or Reject |
+| **Optimize All** | Notebook toolbar | Opens a live queue streaming results cell-by-cell; select what to keep with checkboxes |
 
-To report a bug please read the [guidelines](https://jupyterlab.readthedocs.io/en/latest/getting_started/issue.html) and then open a [Github issue](https://github.com/jupyterlab/jupyterlab/issues/new?labels=bug%2C+status%3ANeeds+Triage&template=bug_report.md). To keep resolved issues self-contained, the [lock bot](https://github.com/apps/lock) will lock closed issues as resolved after a period of inactivity. If a related discussion is still needed after an issue is locked, please open a new issue and reference the old issue.
+**To enable Gemini (AI optimization):**
+1. Open **Settings → Settings Editor → Code Optimizer**
+2. Set **LLM Provider** to `google`, **LLM Model** to `gemini-2.0-flash`
+3. Paste your API key from [aistudio.google.com](https://aistudio.google.com)
 
-### Feature request
+No API key? The extension falls back to rule-based optimization automatically — no configuration needed.
 
-We also welcome suggestions for new features as they help make the project more useful for everyone. To request a feature please use the [feature request template](https://github.com/jupyterlab/jupyterlab/issues/new?labels=enhancement%2C+status%3ANeeds+Triage&template=feature_request.md).
+### Notebook Summary
 
----
-
-## Development
-
-### Extending JupyterLab
-
-To start developing an extension for JupyterLab, see the [developer documentation](https://jupyterlab.readthedocs.io/en/latest/extension/extension_dev.html) and the [API docs](https://jupyterlab.readthedocs.io/en/latest/api/).
-
-### Contributing
-
-To contribute code or documentation to JupyterLab itself, please read the [contributor documentation](https://jupyterlab.readthedocs.io/en/latest/developer/contributing.html).
-
-JupyterLab follows the Jupyter [Community Guides](https://jupyter.readthedocs.io/en/latest/community/content-community.html).
-
-### License
-
-JupyterLab uses a shared copyright model that enables all contributors to maintain the
-copyright on their contributions. All code is licensed under the terms of the revised [BSD license](https://github.com/jupyterlab/jupyterlab/blob/main/LICENSE).
-
-### Team
-
-JupyterLab is part of [Project Jupyter](https://jupyter.org/) and is developed by an open community. The maintenance team is assisted by a much larger group of contributors to JupyterLab and Project Jupyter as a whole. JupyterLab falls under the [Jupyter Frontends Council](https://jupyterlab-team-compass.readthedocs.io/en/latest/index.html).
-
-The team of maintainers includes:
-
-- decision-making contributors listed on the [council team members](https://jupyterlab-team-compass.readthedocs.io/en/latest/team.html) page
-- code contributors listed on the [contributors graph](https://github.com/jupyterlab/jupyterlab/graphs/contributors) page
-
-<details>
-
-<summary>Archival list of maintainers</summary>
-
-Prior to transition to the new governance model with the JupyterLab and then Frontends council, these people contributed to and maintained JupyterLab:
-
-- Mehmet Bektas, Netflix (general development, extensions).
-- Alex Bozarth, IBM (general development, extensions).
-- Eric Charles, Datalayer, (general development, extensions).
-- Frédéric Collonval, WebScIT (general development, extensions).
-- Martha Cryan, Mito (general development, extensions).
-- Afshin Darian, QuantStack (co-creator, application/high-level architecture,
-  prolific contributions throughout the code base).
-- Vidar T. Fauske, JPMorgan Chase (general development, extensions).
-- Brian Granger, AWS (co-creator, strategy, vision, management, UI/UX design,
-  architecture).
-- Jason Grout, Databricks (co-creator, vision, general development).
-- Michał Krassowski, Quansight (general development, extensions).
-- Max Klein, JPMorgan Chase (UI Package, build system, general development, extensions).
-- Gonzalo Peña-Castellanos, QuanSight (general development, i18n, extensions).
-- Fernando Perez, UC Berkeley (co-creator, vision).
-- Steven Silvester, MongoDB (co-creator, release management, packaging,
-  prolific contributions throughout the code base).
-- Jeremy Tuloup, QuantStack (general development, extensions)
-- Chris Colbert, Project Jupyter (co-creator, application/low-level architecture,
-  technical leadership, vision, PhosphorJS)
-- Jessica Forde, Project Jupyter (demo, documentation)
-- Tim George, Cal Poly (UI/UX design, strategy, management, user needs analysis).
-- Cameron Oelsen, Cal Poly (UI/UX design).
-- Isabela Presedo-Floyd, QuanSight Labs (design/UX).
-- Ian Rose, Quansight/City of LA (general core development, extensions).
-- Andrew Schlaepfer, Bloomberg (general development, extensions).
-- Saul Shanabrook, Quansight (general development, extensions)
-
-</details>
+Click the summary toolbar button on any notebook. A panel renders a plain-text overview of the notebook built from cell headings and code comments. Supports **Copy** to clipboard and **Refresh**.
 
 ---
 
-### Weekly Dev Meeting
+## Repository Structure
 
-We have videoconference meetings every week where we discuss what we have been working on and get feedback from one another.
+| Package | Owner | What it does |
+|---------|-------|-------------|
+| `packages/code-optimizer` | Rana Abudaya | Core optimizer: rule-based transformers, LLM client, fallback chain |
+| `packages/code-optimizer-extension` | Rana Abudaya | JupyterLab UI: per-cell buttons, diff dialog, Optimize All live queue, settings schema |
+| `packages/summarizer` | Jaden Dang | Summarization logic: cell parsing, truncation, output formatting |
+| `packages/notebook-extension` | Prateek Singh | Notebook summary panel and toolbar integration |
+| `packages/extensionmanager-extension` | Charity Snellgrove | Notebook Summary sidebar panel; product specification |
 
-Anyone is welcome to attend, if they would like to discuss a topic or just listen in.
+See [`TEAM.md`](TEAM.md) for full architecture and how the packages connect.
 
-- When: Wednesdays 9:00 AM Pacific Time (USA)
-- Where: [`jovyan` Zoom](https://zoom.us/j/95228013874?pwd=Ep7HIk8t9JP6VToxt1Wj4P7K5PshC0.1)
-- What: [Meeting notes](https://hackmd.io/Y7fBMQPSQ1C08SDGI-fwtg?both)
+---
 
-> Notes are archived on [GitHub Jupyter Frontends team compass](https://github.com/jupyterlab/frontends-team-compass/issues).
+## Team Contributions
+
+| Member | Branch(es) | Key Contributions |
+|--------|-----------|------------------|
+| **Rana Abudaya** | `rana-abudaya`, `rana-ai-config-fix` | Code optimizer architecture, four rule-based transformers, Gemini/multi-provider LLM integration, per-cell ⚡ buttons, Optimize All live queue, ESLint fixes, README docs |
+| **Prateek Singh** | `prateek-summary-output-panel` | Notebook summary panel, toolbar button, PR merges and integration coordination (PRs #20, #22, #29, #36) |
+| **Jaden Dang** | `jadendang/summary-logic`, `jadendang/documentation` | Summarizer core logic, TEAM.md, summarizer README (PRs #29, #37) |
+| **Charity Snellgrove** | `charity/buttondesign` | Notebook Summary product spec (`charityfiles/notebook-summary-spec.md`), button design, summary spec (PR #20) |
+| **Stone Lei Cao** | — | Toolbar visibility investigation, issue tracking, documentation support |
+
+---
+
+## Pull Requests
+
+| PR | Branch | Author | What it added |
+|----|--------|--------|--------------|
+| [#20](https://github.com/131219/jupyterlab/pull/20) | `charity/buttondesign` | Charity Snellgrove | Button design and notebook summary spec |
+| [#22](https://github.com/131219/jupyterlab/pull/22) | `rana-abudaya` | Rana Abudaya | Full code optimizer extension (2,603 additions) |
+| [#29](https://github.com/131219/jupyterlab/pull/29) | `jadendang/summary-logic` | Jaden Dang | Summarizer core logic |
+| [#36](https://github.com/131219/jupyterlab/pull/36) | `prateek-summary-output-panel` | Prateek Singh | Notebook summary output panel |
+| [#37](https://github.com/131219/jupyterlab/pull/37) | `jadendang/documentation` | Jaden Dang | TEAM.md and package documentation |
+
+---
+
+## Project Links
+
+- **GitHub Repository:** https://github.com/131219/jupyterlab
+- **Kanban Board:** https://github.com/users/131219/projects/1/views/1
+- **Upstream JupyterLab:** https://github.com/jupyterlab/jupyterlab
