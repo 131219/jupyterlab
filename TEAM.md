@@ -1,35 +1,50 @@
-# Team Project — JupyterLab Notebook Summary & Code Optimizer
+# Team Project — JupyterLab Code Optimizer & Notebook Summary
 
-## What We're Building
+## CSS566 Group Software Management Project
+**University of Washington, Spring 2026**
+Team Finding Nemo: Rana Abudaya, Stone Lei Cao, Jaden Dang, Prateek Singh, Charity Snellgrove
 
-Two AI-powered features added to JupyterLab:
+---
 
-1. **Notebook Summary** — a sidebar button that generates a concise plain-text summary of the active notebook using Anthropic, with a loading state, Copy, and Refresh
-2. **Code Optimizer** — per-cell and whole-notebook toolbar buttons that rewrite code using Google Gemini (falls back to rule-based optimization when no API key is set)
+## What We Built
+
+Two AI-powered features added directly into JupyterLab 4.6:
+
+1. **Code Optimizer** — per-cell and whole-notebook toolbar buttons that rewrite code using Google Gemini (with automatic fallback to rule-based optimization when no API key is configured)
+2. **Notebook Summary** — a toolbar button that generates a plain-text summary of the active notebook so teammates can understand its contents without reading every cell
+
+---
 
 ## Who Owns What
 
 | Owner | Package(s) | What it does |
 |-------|-----------|--------------|
-| Charity Snellgrove | `packages/extensionmanager-extension/` | Sidebar panel with the Notebook Summary button; product spec |
-| Jaden Dang | `packages/summarizer/` | Core summarization logic (cell parsing, truncation, summary formatting) |
-| Prateek Singh | `packages/notebook-extension/`, `packages/code-optimizer/`, `packages/code-optimizer-extension/` | Summary output panel, toolbar button, code optimizer backend and UI |
-| Rana Abudaya | `packages/code-optimizer/`, `packages/code-optimizer-extension/` | Code optimizer extension (shared with Prateek) |
+| **Rana Abudaya** | `packages/code-optimizer/`, `packages/code-optimizer-extension/` | Full code optimizer: rule-based transformers, Gemini/multi-provider LLM integration, per-cell ⚡ buttons, Optimize All live queue, settings schema, diff dialog |
+| **Jaden Dang** | `packages/summarizer/` | Core summarization logic: cell parsing, truncation, output formatting |
+| **Prateek Singh** | `packages/notebook-extension/` | Notebook summary output panel and toolbar button; PR integration lead |
+| **Charity Snellgrove** | `packages/extensionmanager-extension/`, `charityfiles/` | Notebook Summary product specification, design spec, button design |
+| **Stone Lei Cao** | — | Toolbar visibility research, issue tracking, documentation |
+
+---
 
 ## How the Pieces Connect
 
 ```
-User clicks "Notebook Summary" (Charity — extensionmanager-extension)
-    → summarizeNotebook() called (Jaden — packages/summarizer)
-    → result displayed in summary panel (Prateek — notebook-extension)
-    → [future] backend call to Anthropic API (see charityfiles/notebook-summary-spec.md)
-
-User clicks "Optimize" button (Prateek/Rana — code-optimizer-extension)
+User clicks ⚡ on a cell or "Optimize All" (Rana — code-optimizer-extension)
     → RuleBasedOptimizer or Gemini LLM called (packages/code-optimizer)
-    → optimized code written back to cell
+    → side-by-side diff dialog shown, user accepts or rejects
+    → optimized code written back to cell only on explicit approval
+
+User clicks Notebook Summary button (Prateek — notebook-extension)
+    → summarizeNotebook() called (Jaden — packages/summarizer)
+    → plain-text summary rendered in panel
+    → Copy and Refresh controls available
+    → [planned] backend call to Anthropic API (spec in charityfiles/notebook-summary-spec.md)
 ```
 
-## Running Locally
+---
+
+## Running the Project
 
 From the repo root:
 
@@ -39,7 +54,11 @@ bash scripts/start-dev.sh
 
 Then open **http://127.0.0.1:8888/lab** in your browser.
 
-> Requires Node.js 20+ (via nvm) and a Python venv at `jl-env/`. See `packages/code-optimizer-extension/README.md` for setup details.
+**Prerequisites:**
+- Node.js 20+ — install via nvm: `nvm install 20`
+- Python virtualenv at `jl-env/`: `python3 -m venv jl-env && jl-env/bin/pip install -e '.[dev]'`
+
+The startup script checks for both and prints clear instructions if either is missing.
 
 ### Setting up Gemini (for AI code optimization)
 
@@ -47,14 +66,29 @@ Then open **http://127.0.0.1:8888/lab** in your browser.
 2. Set **LLM Provider**: `google`, **LLM Model**: `gemini-2.0-flash`
 3. Paste your API key from [aistudio.google.com](https://aistudio.google.com)
 
-## Package READMEs
+No API key? Rule-based optimization runs automatically with no setup.
 
-- [`packages/summarizer/README.md`](packages/summarizer/README.md) — summarizer API and behavior
-- [`packages/code-optimizer/README.md`](packages/code-optimizer/README.md) — optimizer API and usage
-- [`packages/code-optimizer-extension/README.md`](packages/code-optimizer-extension/README.md) — how to run, configure Gemini, and use the toolbar buttons
+---
+
+## Pull Requests
+
+| PR | Author | What it added |
+|----|--------|--------------|
+| [#20](https://github.com/131219/jupyterlab/pull/20) | Charity Snellgrove | Button design, notebook summary spec |
+| [#22](https://github.com/131219/jupyterlab/pull/22) | Rana Abudaya | Full code optimizer extension (2,603 lines) |
+| [#29](https://github.com/131219/jupyterlab/pull/29) | Jaden Dang | Summarizer core logic |
+| [#36](https://github.com/131219/jupyterlab/pull/36) | Prateek Singh | Notebook summary output panel |
+| [#37](https://github.com/131219/jupyterlab/pull/37) | Jaden Dang | TEAM.md and package documentation |
+| [#38](https://github.com/131219/jupyterlab/pull/38) | Rana Abudaya | Per-cell ⚡ buttons, Optimize All live queue, team README, repo cleanup |
+
+---
+
+## Package Documentation
+
+- [`packages/code-optimizer-extension/README.md`](packages/code-optimizer-extension/README.md) — how to run, configure Gemini, and use both optimizer buttons
+- [`packages/summarizer/README.md`](packages/summarizer/README.md) — summarizer API and cell parsing behavior
 
 ## Design Spec
 
-The full product and implementation spec for the Notebook Summary feature (user flow, backend API shape, Anthropic integration, security model, testing plan) is at:
-
+Full product and implementation spec for Notebook Summary (API shape, panel state machine, Anthropic integration, security model):
 [`charityfiles/notebook-summary-spec.md`](charityfiles/notebook-summary-spec.md)
